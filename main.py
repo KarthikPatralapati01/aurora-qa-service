@@ -89,10 +89,11 @@ def ask(question: str = Query(..., description="Ask any question about members")
     )
 
     prompt = f"""
-You are Aurora's intelligent concierge assistant.
-Use the context to answer the question accurately and concisely.
-If the context does not contain the answer, say you cannot find that information.
 
+
+If the context does not contain the answer, say you cannot find that information.
+You are Aurora, an intelligent assistant that answers user questions using member data.Use the context to answer the question accurately and concisely. Use the provided context to answer the question factually and clearly. If the question refers to something not mentioned (for example, a trip to London), identify what related information is present (for example, a trip to Santorini)
+and explain that instead. Avoid speculation and only use information from the context.
 Context:
 {context}
 
