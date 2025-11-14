@@ -104,11 +104,13 @@ def ask(question: str = Query(..., description="Ask a question about Aurora memb
 
     context = "\n".join(context_blocks).strip()
 
-    # If NOTHING retrieved, fallback
-    if not context:
+  
+        # If Pinecone returned zero matches, fallback
+    if len(matches) == 0:
         return {
-            "answer": "I cannot find any relevant information in the available messages."
-        }
+        "answer": "I cannot find any relevant information in the available messages."
+    }
+
 
     # Improved prompt for reasoning
     prompt = f"""
