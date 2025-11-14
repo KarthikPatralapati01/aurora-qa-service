@@ -115,8 +115,6 @@ You will answer the question using ONLY the member messages provided below.
 Guidelines:
 1. If the context includes related information, use it to provide the best possible specific answer.
 2. If the question asks something not explicitly available, but related info exists, acknowledge what IS known.
-3. Only if there is absolutely no related information, respond:
-   "Make Reasoning Corrctly based on context retrieved if it has partial relevance or no relevance."
 
 Context:
 {context}
