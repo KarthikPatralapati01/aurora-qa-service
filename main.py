@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pinecone import Pinecone, ServerlessSpec
 
+
+# Load environment variables
 load_dotenv()
 
 # Initialize OpenAI
@@ -17,7 +19,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 index_name = os.getenv("PINECONE_INDEX", "aurora-messages")
 
-# Create the index if it does not exist
+# Create Pinecone index if needed
 if index_name not in pc.list_indexes().names():
     pc.create_index(
         name=index_name,
@@ -31,21 +33,25 @@ if index_name not in pc.list_indexes().names():
 
 index = pc.Index(index_name)
 
+# External dataset API
 AURORA_API = "https://november7-730026606190.europe-west1.run.app/messages/"
 
+# FastAPI app
 app = FastAPI(title="Aurora QA System")
 
 
+# Response schema
 class Answer(BaseModel):
     answer: str
 
 
+# Root redirect → /docs
 @app.get("/")
-def root():
+def redirect_to_docs():
     return RedirectResponse(url="/docs")
 
 
-# Index Aurora messages inside Pinecone at startup
+# Build Pinecone index on startup
 @app.on_event("startup")
 def build_index():
     response = requests.get(AURORA_API)
@@ -53,91 +59,78 @@ def build_index():
     messages = data.get("items", [])
 
     if not messages:
-        print("No messages received from API.")
         return
 
     vectors = []
-    for msg in messages:
-        text = f"{msg['user_name']}: {msg['message']}"
-        embedding = client.embeddings.create(
+    for m in messages:
+        text = f"{m['user_name']}: {m['message']}"
+        emb = client.embeddings.create(
             model="text-embedding-3-small",
             input=text
-        ).data[0].embedding
+        )
 
         vectors.append((
-            msg["id"],
-            embedding,
-            {
-                "user_name": msg["user_name"],
-                "message": msg["message"]
-            }
+            m["id"],
+            emb.data[0].embedding,
+            {"user_name": m["user_name"], "message": m["message"]}
         ))
 
     index.upsert(vectors)
-    print(f"Indexed {len(vectors)} messages.")
 
 
+# /ask endpoint
 @app.get("/ask", response_model=Answer)
-def ask(question: str = Query(..., description="Ask a question about Aurora members")):
-    # Create embedding for the question
-    query_embedding = client.embeddings.create(
+def ask(question: str = Query(..., description="Ask any question about members")):
+    # Embed question
+    q_emb = client.embeddings.create(
         model="text-embedding-3-small",
         input=question
     ).data[0].embedding
 
     # Query Pinecone
     results = index.query(
-        vector=query_embedding,
-        top_k=10,               # Better recall than 5
+        vector=q_emb,
+        top_k=5,
         include_metadata=True
     )
 
     matches = results.get("matches", [])
 
-    # Build structured context
-    context_blocks = []
-    for m in matches:
-        md = m["metadata"]
-        context_blocks.append(
-            f"- **{md['user_name']}**: {md['message']}"
-        )
-
-    context = "\n".join(context_blocks).strip()
-
-  
-        # If Pinecone returned zero matches, fallback
+    # If no retrieved contexts → fallback
     if len(matches) == 0:
-        return {
-        "answer": "I cannot find any relevant information in the available messages."
-    }
+        return {"answer": "I cannot find any relevant information in the available messages."}
 
+    # Build context from all matches
+    context = "\n".join(
+        f"- {m['metadata']['user_name']}: {m['metadata']['message']}"
+        for m in matches
+    )
 
-    # Improved prompt for reasoning
+    # LLM prompt
     prompt = f"""
 You are Aurora's intelligent concierge assistant.
 
-Your job is to answer ONLY using the context provided.
+You will answer the question using ONLY the member messages provided below.
 
 Guidelines:
-1. If the question cannot be fully answered, but there is partial information, use it.
-2. If the question asks something not explicitly stated, analyze the context and state what IS known.
-   Example: “I don’t see any data saying Layla is traveling to London, but she DID plan a trip to Santorini.”
-3. Only respond “I cannot find that information in the available messages.” if:
-   - There is NO relevant mention of the person, OR
-   - The context contains nothing related to the question.
+1. If the context includes related information, use it to provide the best possible specific answer.
+2. If the question asks something not explicitly available, but related info exists, acknowledge what IS known.
+3. Only if there is absolutely no related information, respond:
+   "I cannot find that information in the available messages."
 
 Context:
 {context}
 
 Question: {question}
 
-Provide a clear, concise answer:
+Answer:
 """
 
+    # Generate answer
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.1
+        temperature=0.2
     )
 
     answer = completion.choices[0].message.content.strip()
