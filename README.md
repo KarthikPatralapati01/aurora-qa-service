@@ -246,17 +246,12 @@ question: string (required)
 - Add message clustering for faster retrieval  
 - Build UI chatbot interface  
 
----
 
-## 🙏 Acknowledgment
-Thank you for the opportunity to work on this assessment.  
-I truly appreciate the chance to explore the Aurora dataset and build something meaningful.  
-I am deeply inspired by Aurora’s mission to enhance people’s quality of life through thoughtful, intelligent systems — and I would love the opportunity to contribute to that mission.
 
 ---
 
 ## 📧 Contact  
 **Venkata Karthik Patralapati**  
-Email: karthik.patralapati@gmail.com  
-GitHub: https://github.com/KarthikPatralapati01  
+Email: venkatakarthik804@gmail.com  
+
 
