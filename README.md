@@ -2,7 +2,7 @@
 A lightweight question–answering API that allows users to ask natural-language questions about Aurora member messages.  
 The service semantically indexes all messages from Aurora’s public API, stores embeddings in Pinecone, and uses OpenAI to generate accurate, context-aware answers.
 
----
+##LOOM VIDEO Link: https://www.loom.com/share/30a1a99f6feb4a5dbe0cba4691714a53
 
 ## 📌 Overview  
 This project implements a production-ready **semantic search + LLM reasoning** pipeline.  
